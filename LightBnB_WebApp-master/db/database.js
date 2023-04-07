@@ -20,8 +20,9 @@ pool.query(`SELECT title FROM properties LIMIT 10;`)
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = (email) => {
+  const lowerEmail = toLowerCase(email)
   return pool
-    .query(`SELECT * FROM users WHERE users.email = $1;`, [email])
+    .query(`SELECT * FROM users WHERE users.email = $1;`, [lowerEmail])
     .then((result) => {
        console.log(result.rows[0]);
        return result.rows[0];
@@ -79,8 +80,24 @@ const addUser = (user) => {
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+const getAllReservations = (guest_id, limit = 10) => {
+  return pool
+  .query(`SELECT reservations.*, properties.*
+  FROM reservations
+  JOIN properties ON reservations.property_id = properties.id
+  JOIN property_reviews ON properties.id = property_reviews.property_id
+  WHERE reservations.guest_id = 1
+  GROUP BY properties.id, reservations.id
+  ORDER BY reservations.start_date
+  LIMIT 10;`) 
+  .then((result) => {
+     console.log('result:', result);
+     return result.rows
+  })
+  .catch((err) => {
+    console.log('add user error;', err.message);
+    return null;
+  });
 };
 
 /// Properties
