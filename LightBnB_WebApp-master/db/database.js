@@ -108,16 +108,67 @@ const getAllReservations = (guest_id, limit = 10) => {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-const getAllProperties = (options, limit = 10) => {
-  return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
-    .then((result) => {
-       //console.log(result.rows);
-       return result.rows
-    })
+const getAllProperties = function (options, limit = 10) {
+  // 1
+  const queryParams = [];
+  // 2
+  let queryString = `
+  SELECT properties.*, avg(property_reviews.rating) as average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id
+  `;
+  console.log('options', options)
+  // 3
+  if(options.city || options.owner_id || options.minimum_price_per_night && options.maximum_price_per_night){
+    queryString += 'WHERE'
+  }
+
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += ` city LIKE $${queryParams.length} `; // $1 value of 1
+  }
+
+  if (options.owner_id) {
+    if(options.city) {
+      queryString +=  `AND`
+    }
+    queryParams.push(`${options.owner_id}`);
+    queryString +=  ` owner_id = $${queryParams.length} `;
+  }
+  if (options.minimum_price_per_night && options.maximum_price_per_night) {
+    if(options.city || options.owner_id){
+      queryString +=  `AND`
+    }
+    let minPrice = options.minimum_price_per_night * 100
+    let maxPrice = options.maximum_price_per_night * 100
+
+    queryParams.push(`${minPrice}`);
+    queryParams.push(`${maxPrice}`);
+
+    queryString += ` (properties.cost_per_night > $${queryParams.length-1} AND properties.cost_per_night < $${queryParams.length})`;
+  }
+
+  // 4
+  queryParams.push(limit);
+  queryString += `
+  GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
+  `;
+
+  // 5
+  console.log(queryString, queryParams);
+
+  // 6
+  return pool.query(queryString, queryParams)
+  .then((res) => res.rows)
+
+  
     .catch((err) => {
-      //console.log(err.message);
-    });
+    console.log('add user error;', err.message);
+    return null;
+  });
+
 };
 
 
