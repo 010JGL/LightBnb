@@ -20,7 +20,7 @@ pool.query(`SELECT title FROM properties LIMIT 10;`)
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = (email) => {
-  const lowerEmail = toLowerCase(email)
+  const lowerEmail = email.toLowerCase()
   return pool
     .query(`SELECT * FROM users WHERE users.email = $1;`, [lowerEmail])
     .then((result) => {
@@ -86,10 +86,10 @@ const getAllReservations = (guest_id, limit = 10) => {
   FROM reservations
   JOIN properties ON reservations.property_id = properties.id
   JOIN property_reviews ON properties.id = property_reviews.property_id
-  WHERE reservations.guest_id = 1
+  WHERE reservations.guest_id = $1
   GROUP BY properties.id, reservations.id
   ORDER BY reservations.start_date
-  LIMIT 10;`) 
+  LIMIT $2;`, [guest_id, limit]) 
   .then((result) => {
      console.log('result:', result);
      return result.rows
